@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Support\ChoraleCourante;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 
@@ -9,7 +10,8 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        // Une seule instance par requête : tout le monde parle de la même chorale.
+        $this->app->singleton(ChoraleCourante::class);
     }
 
     public function boot(): void

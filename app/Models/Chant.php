@@ -2,15 +2,17 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\AppartientAChorale;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Models\ChantPupitre;
 
 class Chant extends Model
 {
+    use AppartientAChorale;
+
     protected $fillable = [
         'titre', 'paroles', 'tonalite', 'audio_path', 'partition_path', 'created_by',
     ];
@@ -54,7 +56,12 @@ class Chant extends Model
      */
     public function mettreAJourParoles(string $nouvellesParoles, User $auteur): void
     {
+        if ($nouvellesParoles === $this->paroles) {
+            return; // rien n'a changé : pas de version inutile dans l'historique
+        }
+
         $this->versions()->create([
+            'chorale_id' => $this->chorale_id,
             'paroles' => $this->paroles,
             'modifie_par' => $auteur->id,
         ]);

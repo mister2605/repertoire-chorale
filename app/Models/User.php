@@ -2,14 +2,22 @@
 
 namespace App\Models;
 
-// Illuminate\Foundation\Auth\User as Authenticatable
-use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
+/**
+ * ATTENTION — User n'utilise VOLONTAIREMENT pas le trait AppartientAChorale.
+ *
+ * Au moment du login, personne n'est encore connecté : un filtre automatique
+ * sur la chorale renverrait zéro utilisateur et rendrait la connexion
+ * impossible. Le rattachement se fait donc par la colonne chorale_id, et
+ * le filtrage des listes de membres se fait explicitement avec
+ * User::deMaChorale() dans les contrôleurs.
+ */
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
@@ -23,6 +31,7 @@ class User extends Authenticatable
         'password',
         'role',        // 'maitre_choeur' ou 'choriste'
         'pupitre_id',  // sa voix principale (Soprano, Alto, Ténor, Basse)
+        'chorale_id',  // la chorale à laquelle il appartient
     ];
 
     /**
@@ -51,6 +60,19 @@ class User extends Authenticatable
         return $this->belongsTo(Pupitre::class);
     }
 
+    public function chorale(): BelongsTo
+    {
+        return $this->belongsTo(Chorale::class);
+    }
+
+    // --- Filtrage explicite ---
+
+    /** Les membres de la chorale de l'utilisateur connecté. */
+    public function scopeDeMaChorale(Builder $query): Builder
+    {
+        return $query->where('chorale_id', auth()->user()?->chorale_id ?? 0);
+    }
+
     // --- Aides pour les rôles ---
 
     public function estMaitreDeChoeur(): bool
@@ -61,5 +83,11 @@ class User extends Authenticatable
     public function estChoriste(): bool
     {
         return $this->role === 'choriste';
+    }
+
+    /** Deux utilisateurs sont-ils dans la même chorale ? */
+    public function memeChoraleQue(?int $choraleId): bool
+    {
+        return $choraleId !== null && $this->chorale_id === $choraleId;
     }
 }
