@@ -99,6 +99,19 @@ return [
             'expire' => 60,
             'throttle' => 60,
         ],
+
+        /*
+         * Invitations : le maitre de choeur cree le compte, l'appli genere un lien
+         * que le choriste ouvre pour choisir lui-meme son mot de passe.
+         * 10080 minutes = 7 jours, le temps qu'un message WhatsApp soit lu.
+         * throttle a 0 car c'est le maitre de choeur qui declenche, pas le choriste.
+         */
+        'invitations' => [
+            'provider' => 'users',
+            'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
+            'expire' => 10080,
+            'throttle' => 0,
+        ],
     ],
 
     /*

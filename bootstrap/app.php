@@ -24,6 +24,18 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             // rien pour l'instant — tout passe par le jeton CSRF
         ]);
+
+        // Mode tunnel : cloudflared se place devant l'application et lui
+        // transmet l'en-tête indiquant que le visiteur est arrivé en https.
+        // Sans cette confiance accordée, Laravel se croit en http et pose
+        // des cookies de session non sécurisés que le navigateur refuse.
+        //
+        // Volontairement conditionné : faire confiance à tous les proxys
+        // n'a de sens que derrière un tunnel maîtrisé, jamais en production
+        // sur un hébergement classique.
+        if (env('TUNNEL_URL')) {
+            $middleware->trustProxies(at: '*');
+        }
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

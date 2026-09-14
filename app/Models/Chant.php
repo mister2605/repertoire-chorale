@@ -20,10 +20,24 @@ class Chant extends Model
     // Toujours inclure audio_url dans les réponses JSON, calculée à partir d'audio_path
     protected $appends = ['audio_url'];
 
+    /*
+     * Lien RELATIF, volontairement — pas asset().
+     *
+     * asset() fabrique une adresse complète à partir d'APP_URL. Tant que
+     * l'application change d'adresse (tunnel de test, puis vrai domaine),
+     * cette adresse est périmée dès qu'on oublie de mettre APP_URL à jour :
+     * tout le reste continue de marcher, et seul l'audio tombe en panne.
+     * On a perdu deux soirées là-dessus.
+     *
+     * Laravel sert l'API ET le PWA depuis le même domaine : un lien relatif
+     * est donc toujours juste, quelle que soit l'adresse du jour. Le jour où
+     * les audios partiront sur un stockage externe, on repassera par
+     * Storage::url() avec le disque correspondant.
+     */
     protected function audioUrl(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->audio_path ? asset('storage/'.$this->audio_path) : null,
+            get: fn () => $this->audio_path ? '/storage/'.ltrim($this->audio_path, '/') : null,
         );
     }
 

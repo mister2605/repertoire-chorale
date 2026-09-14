@@ -116,6 +116,15 @@ class ChantController extends Controller
     {
         $requis = $creation ? 'required' : 'sometimes|required';
 
+        // La regle "mimes" de Laravel ne se fie PAS a l'extension du nom de
+        // fichier : elle devine le type reel a partir du contenu, puis verifie
+        // qu'il correspond a l'une des extensions listees. Elle est donc aussi
+        // sure que "mimetypes", tout en couvrant les variantes de type qu'un
+        // telephone Android peut produire (audio/x-m4a, application/ogg...)
+        // et qu'une liste "mimetypes" ecrite a la main finit toujours par rater.
+        $formatsAudio = 'mimes:mp3,wav,m4a,ogg,oga,aac,mp4,webm,3gp,amr';
+        $tailleMax = 'max:'.(int) config('chorabase.taille_max_audio_ko');
+
         return $request->validate([
             'titre' => "{$requis}|string|max:255",
             'paroles' => "{$requis}|string|max:50000",
@@ -124,11 +133,32 @@ class ChantController extends Controller
             'categorie_ids.*' => 'integer|exists:categories,id',
             'pupitre_ids' => 'sometimes|array',
             'pupitre_ids.*' => 'integer|exists:pupitres,id',
-            // mimetypes vérifie le contenu réel du fichier, pas seulement son extension
-            'audio' => 'nullable|file|mimetypes:audio/mpeg,audio/wav,audio/x-wav,audio/mp4,audio/ogg|max:20480',
+            'audio' => "nullable|file|{$formatsAudio}|{$tailleMax}",
             'audio_pupitre' => 'nullable|array',
-            'audio_pupitre.*' => 'file|mimetypes:audio/mpeg,audio/wav,audio/x-wav,audio/mp4,audio/ogg|max:20480',
+            'audio_pupitre.*' => "file|{$formatsAudio}|{$tailleMax}",
+        ], [
+            'audio.uploaded' => $this->messageEchecUpload(),
+            'audio_pupitre.*.uploaded' => $this->messageEchecUpload(),
+            'audio.mimes' => 'Format audio non reconnu. Formats acceptes : MP3, WAV, M4A, OGG, AAC.',
+            'audio_pupitre.*.mimes' => 'Format audio non reconnu. Formats acceptes : MP3, WAV, M4A, OGG, AAC.',
         ]);
+    }
+
+    /**
+     * "uploaded" est l'erreur que Laravel renvoie quand PHP lui-meme a refuse
+     * le fichier — presque toujours parce que upload_max_filesize ou
+     * post_max_size du php.ini est plus petit que le fichier. Le message par
+     * defaut ("Le fichier n'a pas pu etre televerse") n'aide personne, alors
+     * qu'ici on peut nommer la vraie cause et la vraie limite.
+     */
+    protected function messageEchecUpload(): string
+    {
+        return sprintf(
+            'Le fichier depasse la limite de PHP (upload_max_filesize = %s, post_max_size = %s). '
+            .'Augmente ces deux valeurs dans le php.ini, ou envoie un fichier plus leger.',
+            ini_get('upload_max_filesize'),
+            ini_get('post_max_size')
+        );
     }
 
     protected function stockerAudio(Request $request, string $champ, string $dossier): ?string

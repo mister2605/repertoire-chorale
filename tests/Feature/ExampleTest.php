@@ -2,18 +2,26 @@
 
 namespace Tests\Feature;
 
-// use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
+/**
+ * Test de fumée : est-ce que l'application démarre ?
+ *
+ * Le test livré par défaut avec Laravel appelait GET / en attendant une page
+ * d'accueil. Ce backend est une API : il n'a pas de page d'accueil, donc ce
+ * test échouait depuis le premier jour. On vérifie plutôt la route de santé
+ * /up, déclarée dans bootstrap/app.php — c'est aussi elle qu'un service
+ * d'hébergement interrogera pour savoir si l'appli répond.
+ */
 class ExampleTest extends TestCase
 {
-    /**
-     * A basic test example.
-     */
-    public function test_the_application_returns_a_successful_response(): void
+    public function test_la_route_de_sante_repond(): void
     {
-        $response = $this->get('/');
+        $this->get('/up')->assertOk();
+    }
 
-        $response->assertStatus(200);
+    public function test_l_api_refuse_les_visiteurs_non_connectes(): void
+    {
+        $this->getJson('/api/chants')->assertStatus(401);
     }
 }

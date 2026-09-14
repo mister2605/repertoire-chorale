@@ -23,15 +23,26 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable;
 
     /**
+     * Les rôles connus, et le seul endroit où ils sont listés.
+     *
+     * Ils étaient auparavant figés dans un ENUM en base ET répétés dans les
+     * règles de validation : ajouter "instrumentiste" demandait de penser aux
+     * deux, et en oublier un se voyait seulement à l'usage. Une seule liste,
+     * ici, référencée partout.
+     */
+    public const ROLES = ['maitre_choeur', 'choriste', 'instrumentiste'];
+
+    /**
      * Les attributs qu'on peut remplir en masse (via create()/update()).
      */
     protected $fillable = [
         'name',
         'email',
         'password',
-        'role',        // 'maitre_choeur' ou 'choriste'
+        'role',        // voir User::ROLES
         'pupitre_id',  // sa voix principale (Soprano, Alto, Ténor, Basse)
         'chorale_id',  // la chorale à laquelle il appartient
+        'active_le',   // null tant que la personne n'a pas choisi son mot de passe
     ];
 
     /**
@@ -49,6 +60,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'active_le' => 'datetime',
             'password' => 'hashed',
         ];
     }
@@ -83,6 +95,26 @@ class User extends Authenticatable
     public function estChoriste(): bool
     {
         return $this->role === 'choriste';
+    }
+
+    /**
+     * Organiste, percussionniste, guitariste... Il lit le programme comme tout
+     * le monde et peut y ajouter SA note (tonalité jouée, intro, tempo), mais
+     * il ne crée ni ne supprime rien. Voir CelebrationPolicy.
+     */
+    public function estInstrumentiste(): bool
+    {
+        return $this->role === 'instrumentiste';
+    }
+
+    /**
+     * Le compte est-il utilisable ? Un compte cree a la main par le maitre de
+     * choeur a un mot de passe aleatoire : il reste inactif tant que la
+     * personne n'a pas ouvert son lien d'invitation.
+     */
+    public function estActive(): bool
+    {
+        return $this->active_le !== null;
     }
 
     /** Deux utilisateurs sont-ils dans la même chorale ? */
